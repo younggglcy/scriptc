@@ -6693,6 +6693,8 @@ function preflightStructure7(load: LoadResult): PreflightStructure {
   // structure wave includes declaration headers and top-level code;
   // reachable bodies are added by lowering's worklists.
   const ambient = ambientDtsPath();
+  // The package shims are program modules wherever scriptc is installed:
+  // an npm install puts them under node_modules.
   const programFiles = program
     .getImplementationSourceFiles()
     .filter(
@@ -6700,8 +6702,6 @@ function preflightStructure7(load: LoadResult): PreflightStructure {
         sf.fileName !== ambient &&
         !sf.isDeclarationFile &&
         !sf.fileName.endsWith(".json") &&
-        // The package shims are program modules wherever scriptc is
-        // installed; an npm install puts them under node_modules.
         (!isNodeModulesPath(sf.fileName) ||
           isPackageShimFile(sf.fileName) ||
           entryPackageFile(sf.fileName) ||
