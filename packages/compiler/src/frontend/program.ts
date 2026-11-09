@@ -6700,7 +6700,10 @@ function preflightStructure7(load: LoadResult): PreflightStructure {
         sf.fileName !== ambient &&
         !sf.isDeclarationFile &&
         !sf.fileName.endsWith(".json") &&
+        // The package shims are program modules wherever scriptc is
+        // installed; an npm install puts them under node_modules.
         (!isNodeModulesPath(sf.fileName) ||
+          isPackageShimFile(sf.fileName) ||
           entryPackageFile(sf.fileName) ||
           npmStaticPackageOfPath(sf.fileName) !== null) &&
         !unselectedPackageJsFile(sf.fileName),

@@ -11,11 +11,14 @@ let installedDeclarationRoot: string | null = null;
  * Lowering asks for them once per mapped type (isFallbackDtsPath), and each
  * answer without an installed root costs a package resolution. */
 const declarationPaths = new Map<string, string>();
+/** The directory packageShimRoot answered for the current root. */
+let shimRoot: string | null = null;
 
 /** A native distribution supplies its relocatable declaration directory. */
 export function setDeclarationRoot(root: string): void {
   installedDeclarationRoot = root;
   declarationPaths.clear();
+  shimRoot = null;
 }
 
 function declarationPath(name: string): string {
@@ -45,9 +48,11 @@ function resolveDeclarationPath(name: string): string {
  * implementation modules package-shims.ts maps npm packages to. A native
  * distribution ships them beside its declarations. */
 export function packageShimRoot(): string {
-  return installedDeclarationRoot === null
-    ? join(dirname(require.resolve("@scriptc/compiler/scriptc.d.ts")), "..", "shims")
-    : join(installedDeclarationRoot, "shims");
+  shimRoot ??=
+    installedDeclarationRoot === null
+      ? join(dirname(require.resolve("@scriptc/compiler/scriptc.d.ts")), "..", "shims")
+      : join(installedDeclarationRoot, "shims");
+  return shimRoot;
 }
 
 /** The directories of files scriptc itself ships, each with the prefix

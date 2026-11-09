@@ -388,13 +388,22 @@ export function packageShimDeclarationText(path: string): string | undefined {
   return `// scriptc: this package compiles from its built-in implementation.\nexport * from ${target};\n${defaultLine}`;
 }
 
+/** The normalized prefix of the shim root's files, for the root
+ * packageShimRoot last answered: lowering asks isPackageShimFile for every
+ * declaration whose origin it records. */
+let shimRootPrefix: { root: string; prefix: string } | null = null;
+
 /** True for a file of the shipped package shims. They are compiler-owned
  * implementations, type-checked by scriptc's own tests: like library
  * declarations under skipLibCheck, a project's lib and @types/node choice
  * must not turn their internals into the project's type errors. */
 export function isPackageShimFile(fileName: string): boolean {
-  const root = tsgoPath(packageShimRoot());
-  return fileName.startsWith(root.endsWith("/") ? root : `${root}/`);
+  const root = packageShimRoot();
+  if (shimRootPrefix?.root !== root) {
+    const path = tsgoPath(root);
+    shimRootPrefix = { root, prefix: path.endsWith("/") ? path : `${path}/` };
+  }
+  return fileName.startsWith(shimRootPrefix.prefix);
 }
 
 /** True for a name a shipped shim may declare as a bodiless runtime
