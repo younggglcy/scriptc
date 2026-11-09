@@ -11,14 +11,18 @@ let installedDeclarationRoot: string | null = null;
  * Lowering asks for them once per mapped type (isFallbackDtsPath), and each
  * answer without an installed root costs a package resolution. */
 const declarationPaths = new Map<string, string>();
-/** The directory packageShimRoot answered for the current root. */
+/** The directory packageShimRoot answered for the current root, and the
+ * roots compilerOwnedFileRoots built from it. Lowering asks whether a file
+ * is scriptc's own for every declaration whose origin it records. */
 let shimRoot: string | null = null;
+let ownedFileRoots: readonly { from: string; to: string }[] | null = null;
 
 /** A native distribution supplies its relocatable declaration directory. */
 export function setDeclarationRoot(root: string): void {
   installedDeclarationRoot = root;
   declarationPaths.clear();
   shimRoot = null;
+  ownedFileRoots = null;
 }
 
 function declarationPath(name: string): string {
@@ -60,7 +64,17 @@ export function packageShimRoot(): string {
  * (compilerOwnedFileName). IR artifacts spell source locations in them this
  * way (serializeModuleParts). */
 export function compilerOwnedFileRoots(): readonly { from: string; to: string }[] {
-  return [{ from: tsgoPath(packageShimRoot()) + "/", to: "scriptc:shims/" }];
+  if (ownedFileRoots === null) {
+    const shims = tsgoPath(packageShimRoot());
+    ownedFileRoots = [{ from: shims.endsWith("/") ? shims : `${shims}/`, to: "scriptc:shims/" }];
+  }
+  return ownedFileRoots;
+}
+
+/** The prefix of every package shim file's name: the shim root's tsgo path
+ * and a trailing slash. */
+export function packageShimPrefix(): string {
+  return compilerOwnedFileRoots()[0]!.from;
 }
 
 /** The name of a file scriptc itself ships (a package shim or one of the

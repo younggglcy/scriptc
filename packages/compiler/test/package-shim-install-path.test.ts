@@ -11,16 +11,19 @@
  * IR names shim files `scriptc:shims/...` (compilerOwnedFileName), so two
  * installations of one compiler emit identical bytes.
  */
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, test } from "vitest";
 import { compile } from "../src/index.js";
 import { setDeclarationRoot } from "../src/frontend/dts-paths.js";
+import { packageOfFile } from "../src/frontend/lowering/decl-origin.js";
 
 const repoRoot = join(import.meta.dirname, "../../..");
 const compilerRoot = join(repoRoot, "packages/compiler");
-const scratch = mkdtempSync(join(tmpdir(), "scriptc-shim-install-path-"));
+// The checker names files by their real paths (macOS's tmpdir is a symlink),
+// and the declaration root must name them the same way.
+const scratch = realpathSync(mkdtempSync(join(tmpdir(), "scriptc-shim-install-path-")));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 /** The declarations directory a native distribution ships, laid out as
@@ -84,6 +87,21 @@ function firstDifference(installedIr: string, standaloneIr: string): string {
 }
 
 describe("package shims under a node_modules installation", () => {
+  test("scriptc's shipped files belong to no installed package", () => {
+    setDeclarationRoot(installed);
+    for (const file of [
+      "shims/undici/v7.ts",
+      "scriptc.d.ts",
+      "scriptc-node-fallback.d.ts",
+      "node-fallback/fs.d.ts",
+    ])
+      expect(packageOfFile(join(installed, file)), file).toBeNull();
+    expect(packageOfFile(join(scratch, "project/node_modules/undici/index.js"))).toEqual({
+      name: "undici",
+      version: "",
+    });
+  });
+
   // undici: the shim's own modules join the program's module order (they
   // were left out, and its classes were "not declared in the program").
   // fs-extra: the same, required from an installed package's JavaScript.
